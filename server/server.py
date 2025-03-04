@@ -54,6 +54,21 @@ def delete_group(group_id):
     
     return '', 204  # Return 204 (do not modify this line)
 
+@app.errorhandler(400)
+def handle_400_error(e):
+    return jsonify({"error": e.description}), 400
+
+def ensure_unique_group_name(base_name: str) -> str:
+    """
+    Check if groupName already exists. If it does, add (1), (2) ... until a non-existent name is found.
+    """
+    candidate_name = base_name
+    i = 1
+    while any(g["groupName"] == candidate_name for g in groups):
+        candidate_name = f"{base_name}({i})"
+        i += 1
+    return candidate_name
+
 @app.route('/api/groups', methods=['POST'])
 def create_group():
     """
@@ -69,9 +84,12 @@ def create_group():
      
     if not group_name or not isinstance(group_members, list):
         abort(400, description = "groupName and members must be provided")
+
+    # Check if the group name already exists
+    group_name = ensure_unique_group_name(group_name)
     
     new_members = []
-    # 对于每个成员名称，检查学生是否已存在，若不存在则创建新的学生记录
+    # For each member name, check if the student already exists, if not create a new student record
     for member in group_members:
         existing_student = next((s for s in students if s["name"] == member), None)
         if existing_student:
